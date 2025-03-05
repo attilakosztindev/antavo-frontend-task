@@ -27,6 +27,7 @@
   },
   "devDependencies": {
     "@nuxtjs/tailwindcss": "^6.13.1",
+    "@types/lodash": "^4.17.16",
     "vite-plugin-pug": "^0.4.1"
   }
 }

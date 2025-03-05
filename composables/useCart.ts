@@ -1,11 +1,7 @@
 import type { Product } from '~/types/inventory'
 import { useProducts } from '~/composables/useProducts'
 
-interface CartItem extends Product {
-  quantity: number
-}
-
-const cartItems = ref<CartItem[]>([])
+const cartItems = ref<Product[]>([])
 
 export const useCart = () => {
   const saveToLocalStorage = () => {
@@ -19,7 +15,7 @@ export const useCart = () => {
       const savedCart = localStorage.getItem('cart')
       if (savedCart) {
         const parsedCart = JSON.parse(savedCart)
-        cartItems.value = parsedCart.map((item: CartItem) => ({
+        cartItems.value = parsedCart.map((item: Product) => ({
           ...item,
           lastSynchronized: item.lastSynchronized || new Date().toLocaleString('hu-HU')
         }))
@@ -33,28 +29,23 @@ export const useCart = () => {
   const addToCart = async (product: Product, quantity: number = 1) => {
     const { fetchSingleProduct } = useProducts()
     const updatedProduct = await fetchSingleProduct(product.id)
-    
     const existingItem = cartItems.value.find(item => item.id === product.id)
-    
+
     if (existingItem) {
-      existingItem.quantity += quantity
-      
-      if (updatedProduct && updatedProduct.lastUpdated !== existingItem.lastUpdated) {
+      existingItem.quantity = (existingItem.quantity || 0) + quantity
+      if (updatedProduct) {
         existingItem.lastSynchronized = new Date().toLocaleString('hu-HU')
-        Object.assign(existingItem, {
-          ...updatedProduct,
-          quantity: existingItem.quantity
-        })
+        existingItem.maxQuantity = updatedProduct.maxQuantity
       }
-      cartItems.value = [...cartItems.value]
     } else {
-      cartItems.value = [...cartItems.value, { 
-        ...(updatedProduct || product), 
+      const newItem = {
+        ...product,
         quantity,
         lastSynchronized: new Date().toLocaleString('hu-HU')
-      }]
+      }
+      cartItems.value = [...cartItems.value, newItem]
     }
-    
+
     await nextTick()
     saveToLocalStorage()
   }
@@ -68,18 +59,14 @@ export const useCart = () => {
     const item = cartItems.value.find(item => item.id === productId)
     if (!item) return
     
-    item.quantity = quantity
-
     const { fetchSingleProduct } = useProducts()
-    const updatedProduct = await fetchSingleProduct(productId)
-
-    if (updatedProduct && updatedProduct.lastUpdated !== item.lastUpdated) {
-      if (updatedProduct.quantity < quantity) {
-        item.quantity = updatedProduct.quantity
-      }
-      
-      item.lastSynchronized = new Date().toLocaleString('hu-HU')
-      Object.assign(item, { ...updatedProduct,quantity: item.quantity })
+    const updatedProduct = await fetchSingleProduct(productId, item.lastSynchronized)
+    
+    if (updatedProduct) {
+      item.maxQuantity = updatedProduct.maxQuantity
+      item.quantity = quantity
+    } else {
+      item.quantity = quantity
     }
 
     if (item.quantity <= 0) {
@@ -92,12 +79,12 @@ export const useCart = () => {
   const subtotal = computed(() => {
     return cartItems.value.reduce((sum, item) => {
       const price = item.price.special || item.price.normal
-      return sum + (price * item.quantity)
+      return sum + (price * (item.quantity || 0))
     }, 0)
   })
 
   const itemCount = computed(() => {
-    return cartItems.value.reduce((sum, item) => sum + item.quantity, 0)
+    return cartItems.value.reduce((sum, item) => sum + (item.quantity || 0), 0)
   })
 
   return {

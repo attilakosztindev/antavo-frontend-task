@@ -2,13 +2,14 @@ export interface Product {
   id: string
   name: string
   imageUrl: string
-  quantity: number
+  maxQuantity: number
+  quantity?: number
   lastUpdated: string
   lastSynchronized?: string
   badges: Array<{ title: string; background_color: string }>
   price: {
     normal: number
-    special: number | null
+    special?: number
   }
   variants: string[]
   category: {
@@ -39,11 +40,6 @@ export interface SyncStatus {
   lastSynced: string
   syncing: boolean
   conflicts: string[]
-}
-
-export interface Price {
-  regular: number
-  special: number | null
 }
 
 export interface Badge {

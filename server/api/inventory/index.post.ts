@@ -12,7 +12,7 @@ export default defineEventHandler(async (event) => {
     id: randomUUID(),
     name: body.name,
     imageUrl: body.imageUrl,
-    quantity: body.quantity,
+    maxQuantity: body.quantity || 0,
     lastUpdated: new Date().toISOString(),
     badges: [],
     price: {

@@ -7,12 +7,12 @@ export const mockInventory: Product[] = [
     id: '1',
     name: 'Organic Single-Origin Ethiopian Yirgacheffe Coffee Beans',
     imageUrl: '/product1.jpg',
-    quantity: getRandomQuantity(),
+    maxQuantity: getRandomQuantity(),
     lastUpdated: new Date().toISOString(),
     badges: [{ title: 'New', background_color: '#2E7D32' }],
     price: {
-      normal: 19.99,
-      special: null
+      normal: 19,
+      special: 0
     },
     variants: ['#D8D8D8', '#1C4C5B', '#FFFFFF'],
     category: { id: '1', title: 'Kitchen' },
@@ -22,12 +22,12 @@ export const mockInventory: Product[] = [
     id: '2',
     name: 'Premium Earl Grey Imperial Blend Tea Bags',
     imageUrl: 'https://images.unsplash.com/photo-1564890369478-c89ca6d9cde9?w=500&q=80',
-    quantity: getRandomQuantity(),
+    maxQuantity: getRandomQuantity(),
     lastUpdated: new Date().toISOString(),
     badges: [],
     price: {
-      normal: 10.99,
-      special: null
+      normal: 10,
+      special: 0
     },
     variants: ['#D8D8D8', '#1C4C5B', '#FFFFFF'],
     category: { id: '2', title: 'DIY' },
@@ -37,12 +37,12 @@ export const mockInventory: Product[] = [
     id: '3',
     name: 'Artisanal Raw Cane Sugar Crystal Collection',
     imageUrl: 'https://images.unsplash.com/photo-1581441363689-1f3c3c414635?w=500&q=80',
-    quantity: getRandomQuantity(),
+    maxQuantity: getRandomQuantity(),
     lastUpdated: new Date().toISOString(),
     badges: [{ title: 'New', background_color: '#2E7D32' }],
     price: {
-      normal: 5.99,
-      special: null
+      normal: 5,
+      special: 0
     },
     variants: ['#D8D8D8', '#1C4C5B', '#FFFFFF'],
     category: { id: '3', title: 'Garden' },
@@ -52,12 +52,12 @@ export const mockInventory: Product[] = [
     id: '4',
     name: 'Artisanal Hand-Crafted Chocolate-Dipped Biscotti Collection',
     imageUrl: 'https://images.unsplash.com/photo-1548848221-0c2e497ed557?w=500&q=80',
-    quantity: getRandomQuantity(),
+    maxQuantity: getRandomQuantity(),
     lastUpdated: new Date().toISOString(),
     badges: [{ title: '-25%', background_color: '#C62828' }],
     price: {
-      normal: 24.99,
-      special: 19.99
+      normal: 24,
+      special: 19
     },
     variants: ['#8B4513', '#D2691E', '#A0522D'],
     category: { id: '4', title: 'Gourmet Treats' },
@@ -67,12 +67,12 @@ export const mockInventory: Product[] = [
     id: '5',
     name: 'Ultimate Barista Pro Deluxe Coffee Grinder 3000',
     imageUrl: '',
-    quantity: getRandomQuantity(),
+    maxQuantity: getRandomQuantity(),
     lastUpdated: new Date().toISOString(),
     badges: [],
     price: {
-      normal: 299.99,
-      special: 249.99
+      normal: 299,
+      special: 249
     },
     variants: ['#000000', '#CC0000', '#666666'],
     category: { id: '5', title: 'Equipment' },
@@ -82,12 +82,12 @@ export const mockInventory: Product[] = [
     id: '6',
     name: 'Midnight Mystery Limited Reserve Single-Origin Coffee',
     imageUrl: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=500&q=80',
-    quantity: getRandomQuantity(),
+    maxQuantity: getRandomQuantity(),
     lastUpdated: new Date().toISOString(),
     badges: [{ title: 'New', background_color: '#2E7D32' }],
     price: {
-      normal: 49.99,
-      special: null
+      normal: 49,
+      special: 0
     },
     variants: ['#000000'],
     category: { id: '1', title: 'Category 1' },
@@ -97,12 +97,12 @@ export const mockInventory: Product[] = [
     id: '7',
     name: 'Rainbow Unicorn Birthday Cake Flavored Coffee Pods',
     imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=500&q=80',
-    quantity: getRandomQuantity(),
+    maxQuantity: getRandomQuantity(),
     lastUpdated: new Date().toISOString(),
     badges: [],
     price: {
-      normal: 15.99,
-      special: 12.99
+      normal: 15,
+      special: 12
     },
     variants: ['#FF69B4', '#87CEEB', '#98FB98', '#DDA0DD'],
     category: { id: '6', title: 'Specialty Flavors' },
@@ -112,14 +112,13 @@ export const mockInventory: Product[] = [
 
 setInterval(() => {
   mockInventory.forEach(item => {
-    item.quantity = getRandomQuantity()
+    item.maxQuantity = getRandomQuantity()
     item.lastUpdated = new Date().toISOString()
-    item.in_stock = item.quantity > 0
+    item.in_stock = item.maxQuantity > 0
   })
 }, 60000)
 
 export const simulateDelay = () => new Promise(resolve => setTimeout(resolve, Math.random() * 800 + 200))
-
 export const simulateConflict = () => Math.random() < 0.2
 
 export default defineEventHandler((event) => {

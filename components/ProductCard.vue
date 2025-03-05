@@ -25,36 +25,20 @@ const isOutOfStock = computed(() => {
 })
 
 const remainingQuantity = computed(() => {
-  if (maxAvailableQuantity.value === null) return props.product.quantity
+  if (maxAvailableQuantity.value === null) return props.product.maxQuantity
   
   const cartItem = cartItems.value.find(item => item.id === props.product.id)
   const cartQuantity = cartItem?.quantity || 0
-  
-  if (cartQuantity >= maxAvailableQuantity.value) {
-    isUnavailable.value = true
-    selectedQuantity.value = 0
-    return 0
-  }
   
   return maxAvailableQuantity.value - cartQuantity
 })
 
 const checkTotalQuantity = async () => {
   const updatedProduct = await fetchSingleProduct(props.product.id)
+  if (!updatedProduct) return props.product.maxQuantity
 
-  if (!updatedProduct) return props.product.quantity
-
-  const cartItem = cartItems.value.find(item => item.id === props.product.id)
-  const cartQuantity = cartItem?.quantity || 0
-  maxAvailableQuantity.value = updatedProduct.quantity
-  
-  if (cartQuantity >= updatedProduct.quantity) {
-    isUnavailable.value = true
-    selectedQuantity.value = 0
-    return 0
-  }
-  
-  return updatedProduct.quantity - cartQuantity
+  maxAvailableQuantity.value = updatedProduct.maxQuantity
+  return updatedProduct.maxQuantity
 }
 
 const handleAddToCart = async () => {
@@ -87,25 +71,23 @@ watch(remainingQuantity, async (newValue) => {
     selectedQuantity.value = 0
   } else {
     isUnavailable.value = false
-    if (selectedQuantity.value === 0) {
-      selectedQuantity.value = 1
-    }
+    if (selectedQuantity.value === 0) selectedQuantity.value = 1
   }
 })
 
 watch(cartItems, async (newItems) => {
   const currentProduct = props.product
-  const cartItem = newItems.find(item => item.id === currentProduct.id)
+  const cartItem = newItems.find((item: Product) => item.id === currentProduct.id)
   
   const updatedProduct = await fetchSingleProduct(currentProduct.id)
   if (!updatedProduct) return
   
-  maxAvailableQuantity.value = updatedProduct.quantity
+  maxAvailableQuantity.value = updatedProduct.maxQuantity
   
   if (!cartItem) {
     isUnavailable.value = false
     selectedQuantity.value = 1
-  } else if (cartItem.quantity >= updatedProduct.quantity) {
+  } else if ((cartItem.quantity || 0) >= updatedProduct.maxQuantity) {
     isUnavailable.value = true
     selectedQuantity.value = 0
   }
@@ -196,6 +178,7 @@ section.product-card(
       template(v-if="!isOutOfStock")
         ProductCounter(
           :quantity="remainingQuantity"
+          :max-quantity="product.maxQuantity"
           v-model="selectedQuantity"
           :is-unavailable="isUnavailable"
           :max-allowed="100"

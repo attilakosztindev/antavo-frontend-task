@@ -4,6 +4,10 @@ const props = defineProps({
     type: Number,
     required: true
   },
+  maxQuantity: {
+    type: Number,
+    required: true
+  },
   modelValue: {
     type: Number,
     required: true
@@ -11,10 +15,6 @@ const props = defineProps({
   isUnavailable: {
     type: Boolean,
     default: false
-  },
-  max: {
-    type: Number,
-    default: 100
   }
 })
 
@@ -35,17 +35,17 @@ const productQty = computed({
   set: debounce((value: number) => {
     const numValue = Math.min(
       Math.max(Number(value) || 0, 0),
-      Math.min(props.quantity, props.max)
+      Math.min(props.quantity, props.maxQuantity)
     )
     
-    if (numValue <= props.quantity && numValue <= props.max) {
+    if (numValue <= props.quantity && numValue <= props.maxQuantity) {
       emit('update:modelValue', numValue)
     }
   }, 200)
 })
 
 const increment = () => {
-  if (productQty.value < props.quantity && productQty.value < props.max) {
+  if (productQty.value < props.quantity && productQty.value < props.maxQuantity) {
     emit('update:modelValue', productQty.value + 1)
   }
 }
@@ -68,7 +68,7 @@ const handleInput = (event: Event) => {
     return
   }
   
-  const maxQuantity = Math.min(props.quantity, props.max)
+  const maxQuantity = Math.min(props.quantity, props.maxQuantity)
   const validValue = Math.min(Math.max(value, 1), maxQuantity)
   
   if (value !== validValue) {
@@ -88,7 +88,7 @@ const handleBlur = (event: Event) => {
   }
   
   const value = parseInt(input.value)
-  const maxQuantity = Math.min(props.quantity, props.max)
+  const maxQuantity = Math.min(props.quantity, props.maxQuantity)
   const validValue = Math.min(Math.max(value, 1), maxQuantity)
   
   inputValue.value = validValue.toString()
@@ -117,13 +117,13 @@ watch(() => props.modelValue, (newValue) => {
     :value="inputValue"
     @input="handleInput"
     @blur="handleBlur"
-    :max="Math.min(quantity, max)"
+    :max="Math.min(quantity, maxQuantity)"
     min="1"
     :disabled="isUnavailable"
   )
   button.counter__btn.counter__btn--increase(
     @click="increment"
-    :disabled="isUnavailable || modelValue >= Math.min(quantity, max)"
+    :disabled="isUnavailable || modelValue >= Math.min(quantity, maxQuantity)"
     aria-label="Increase quantity"
   )
     AppImg(

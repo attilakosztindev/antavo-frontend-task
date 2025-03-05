@@ -4,7 +4,7 @@ export function useProducts() {
   const error = ref<string | null>(null)
   const loading = ref<boolean>(false)
   
-  const productCache = ref(new Map<string, { lastUpdated: string }>())
+  const productCache = ref(new Map<string, { lastUpdated: string; maxQuantity: number }>())
 
   const fetchProducts = async () => {
     loading.value = true
@@ -20,29 +20,33 @@ export function useProducts() {
     }
   }
 
-  const fetchSingleProduct = async (id: string) => {
+  const fetchSingleProduct = async (id: string, lastUpdated?: string) => {
     loading.value = true
     error.value = null
     try {
-      const timestampResponse = await $fetch<{ lastUpdated: string }>(`/api/inventory/${id}/timestamp`)
       const cachedProduct = productCache.value.get(id)
+      
+      const response = await $fetch<Product>(`/api/inventory/${id}`, {
+        method: 'POST',
+        body: {
+          lastUpdated: lastUpdated || cachedProduct?.lastUpdated
+        }
+      })
 
-      if (cachedProduct && cachedProduct.lastUpdated === timestampResponse.lastUpdated) {
-        loading.value = false
-        return null
+      if (!response) {
+        return cachedProduct ? { ...cachedProduct, id, maxQuantity: cachedProduct.maxQuantity } : null
       }
 
-      const response = await $fetch<Product>(`/api/inventory/${id}`)
-
-      if (response && typeof response.quantity === 'number') {
-        productCache.value.set(id, { lastUpdated: response.lastUpdated })
-        return response
+      const newCacheEntry = { 
+        lastUpdated: response.lastUpdated || new Date().toISOString(),
+        maxQuantity: response.maxQuantity || 0
       }
+      
+      productCache.value.set(id, newCacheEntry)
+      return response
 
-      throw new Error('Invalid product data received')
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'An error has occurred'
-      console.error('Failed to fetch product:', err)
       return null
     } finally {
       loading.value = false

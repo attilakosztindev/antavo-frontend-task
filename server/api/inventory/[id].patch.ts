@@ -27,7 +27,7 @@ export default defineEventHandler(async (event: H3Event) => {
     }
   }
 
-  item.quantity = body.quantity
+  item.maxQuantity = body.maxQuantity
   item.lastUpdated = new Date().toISOString()
 
   return {

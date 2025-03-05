@@ -1,8 +1,10 @@
 <script lang="ts" setup>
+import { debounce } from 'lodash'
 import { useCart } from '~/composables/useCart'
 import { formatCurrency } from '~/utils/formatCurrency'
 import { useProducts } from '~/composables/useProducts'
 import type { Product } from '~/types/inventory'
+
 const { cartItems, removeFromCart, updateQuantity, subtotal, itemCount } = useCart()
 const { fetchSingleProduct } = useProducts()
 
@@ -14,19 +16,11 @@ const props = defineProps({
   }
 })
 
-const updatedQuantities = ref(new Map<string, number>())
+const updatedProducts = ref(new Map<string, number>())
 const conflicts = ref<Set<string>>(new Set())
 
 const closeDropdown = () => {
   emit('update:isActive', false)
-}
-
-const debounce = (fn: Function, delay: number) => {
-  let timeoutId: NodeJS.Timeout
-  return (...args: any[]) => {
-    clearTimeout(timeoutId)
-    timeoutId = setTimeout(() => fn(...args), delay)
-  }
 }
 
 const checkQuantityConflicts = async () => {
@@ -34,41 +28,15 @@ const checkQuantityConflicts = async () => {
   
   for (const item of cartItems.value) {
     const updatedProduct = await fetchSingleProduct(item.id)
+
     if (!updatedProduct) continue
-    
-    if (item.quantity > updatedProduct.quantity) {
+
+    if ((item.quantity || 0) > updatedProduct.maxQuantity) {
       newConflicts.add(item.id)
     }
   }
   
   conflicts.value = newConflicts
-}
-
-const handleQuantityUpdate = async (id: string, newQuantity: number) => {
-  if (newQuantity < 1) return
-  
-  const updatedProduct = await fetchSingleProduct(id)
-  if (!updatedProduct) return
-  
-  const currentItem = cartItems.value.find(item => item.id === id)
-  if (!currentItem) return
-
-  const maxQuantity = Math.min(updatedProduct.quantity, 100)
-  
-  if (newQuantity > maxQuantity) {
-    await updateQuantity(id, maxQuantity)
-    cartItemInputs.value.set(id, maxQuantity.toString())
-  } else {
-    await updateQuantity(id, newQuantity)
-    cartItemInputs.value.set(id, newQuantity.toString())
-  }
-
-  const finalQuantity = newQuantity > maxQuantity ? maxQuantity : newQuantity
-  if (finalQuantity > updatedProduct.quantity) {
-    conflicts.value.add(id)
-  } else {
-    conflicts.value.delete(id)
-  }
 }
 
 const handleRemoveFromCart = async (id: string) => {
@@ -79,119 +47,85 @@ const handleRemoveFromCart = async (id: string) => {
 
 const handleCheckout = async () => {
   await checkQuantityConflicts()
-  if (conflicts.value.size > 0) {
-    return
-  }
+  if (conflicts.value.size > 0) return
   alert('Checkout successful')
 }
 
-const updateQuantities = async () => {
+const updateCartItems = async () => {
   for (const item of cartItems.value) {
-    const updatedProduct = await fetchSingleProduct(item.id)
-    if (updatedProduct) {
-      updatedQuantities.value.set(item.id, updatedProduct.quantity)
-    }
+    const product = await fetchSingleProduct(item.id)
+    if (product) updatedProducts.value.set(item.id, product.maxQuantity || 0)
   }
 }
 
-const isItemUnavailable = (item: Product) => {
-  const updatedQuantity = updatedQuantities.value.get(item.id) || 0
-  return item.quantity >= updatedQuantity
-}
+const isItemUnavailable = (item: Product) => (item.quantity || 0) >= item.maxQuantity
 
-const debouncedQuantityUpdate = debounce(handleQuantityUpdate, 200)
-
-const handleInput = async (id: string, event: Event) => {
+const handleInput = debounce(async (item: Product, event: Event) => {
   const input = event.target as HTMLInputElement
-  cartItemInputs.value.set(id, input.value)
-  
-  if (input.value === '') return
-  
-  const value = parseInt(input.value)
-  if (isNaN(value)) {
-    const currentItem = cartItems.value.find(item => item.id === id)
-    if (currentItem) {
-      cartItemInputs.value.set(id, currentItem.quantity.toString())
+  const currentItem = cartItems.value.find((cartItem) => cartItem.id === item.id)
+  const product = await fetchSingleProduct(item.id)
+
+  if (product && currentItem) {
+    currentItem.maxQuantity = product.maxQuantity
+  }
+
+  if (currentItem) {
+    let newQuantity = parseInt(input.value) || 1
+
+    if (newQuantity > 100) {
+      newQuantity = 100  
+      input.value = '100'
     }
-    return
-  }
 
-  const updatedProduct = await fetchSingleProduct(id)
-  if (!updatedProduct) return
-
-  const maxQuantity = Math.min(updatedProduct.quantity, 100)
-  const validValue = Math.min(Math.max(value, 1), maxQuantity)
-  
-  if (value !== validValue) {
-    cartItemInputs.value.set(id, validValue.toString())
-  }
-  
-  debouncedQuantityUpdate(id, validValue)
-}
-
-const handleBlur = async (id: string, event: Event) => {
-  const input = event.target as HTMLInputElement
-  const currentItem = cartItems.value.find(item => item.id === id)
-  if (!currentItem) return
-  
-  if (input.value === '' || isNaN(parseInt(input.value))) {
-    cartItemInputs.value.set(id, currentItem.quantity.toString())
-    return
-  }
-  
-  const updatedProduct = await fetchSingleProduct(id)
-  if (!updatedProduct) {
-    cartItemInputs.value.set(id, currentItem.quantity.toString())
-    return
-  }
-  
-  const value = parseInt(input.value)
-  const maxQuantity = Math.min(updatedProduct.quantity, 100)
-  const validValue = Math.min(Math.max(value, 1), maxQuantity)
-  
-  cartItemInputs.value.set(id, validValue.toString())
-  await handleQuantityUpdate(id, validValue)
-}
-
-const handleDecrement = async (id: string, currentQuantity: number) => {
-  if (currentQuantity <= 1) return
-  const newQuantity = currentQuantity - 1
-  await handleQuantityUpdate(id, newQuantity)
-}
-
-const handleIncrement = async (id: string, currentQuantity: number) => {
-  const updatedProduct = await fetchSingleProduct(id)
-  if (!updatedProduct) return
-  
-  const maxQuantity = Math.min(updatedProduct.quantity, 100)
-  if (currentQuantity >= maxQuantity) {
-    if (currentQuantity > maxQuantity) {
-      conflicts.value.add(id)
+    await updateQuantity(currentItem.id, newQuantity)
+    
+    if (newQuantity > currentItem.maxQuantity) {
+      conflicts.value.add(item.id)
+    } else {
+      conflicts.value.delete(item.id)
     }
-    return
   }
+}, 150)
+
+const handleDecrement = debounce(async (product: Product) => {
+  if ((product.quantity || 0) <= 1) return
   
-  const newQuantity = currentQuantity + 1
-  await handleQuantityUpdate(id, newQuantity)
-  await updateQuantities()
-}
+  const updatedProduct = await fetchSingleProduct(product.id)
+
+  if (updatedProduct) product.maxQuantity = updatedProduct.maxQuantity
+
+
+  if (conflicts.value.has(product.id)) product.quantity = product.maxQuantity
+  else {
+    const newQuantity = (product.quantity || 0) - 1
+    await updateQuantity(product.id, newQuantity)
+  }
+
+  if ((product.quantity || 0) <= product.maxQuantity) {
+    conflicts.value.delete(product.id)
+  }
+}, 150)
+
+const handleIncrement = debounce(async (item: Product) => {
+  const product = await fetchSingleProduct(item.id)
+
+  if (product) {
+    item.maxQuantity = product.maxQuantity
+  }
+
+  const newQuantity = (item.quantity || 0) + 1
+  await updateQuantity(item.id, newQuantity)
+  
+  if (newQuantity > item.maxQuantity) {
+    conflicts.value.add(item.id)
+  } else {
+    conflicts.value.delete(item.id)
+  }
+}, 150)
 
 watch(() => props.isActive, async (newValue) => {
   if (newValue) {
-    await updateQuantities()
-  }
-}, { immediate: true })
-
-const cartItemInputs = ref(new Map<string, string>())
-
-watch(() => cartItems.value, (items) => {
-  items.forEach(item => {
-    cartItemInputs.value.set(item.id, item.quantity.toString())
-  })
-}, { immediate: true })
-
-watch(() => props.isActive, async (newValue) => {
-  if (newValue) {
+    await updateCartItems()
     await checkQuantityConflicts()
   }
 }, { immediate: true })
@@ -208,8 +142,8 @@ watch(() => props.isActive, async (newValue) => {
       asset="icon_cart.svg"
       alt="Cart"
     )
-    ClientOnly
-      span.cart__counter(:class="{ 'cart__counter--visible': itemCount > 0 }") {{ itemCount }}
+  ClientOnly
+    .cart__counter(:class="{ 'cart__counter--visible': itemCount > 0 }") {{ itemCount > 99 ? '99+' : itemCount }}
   transition(name="fade")
     .cart__dropdown(v-if="isActive")
       .cart__items(v-if="cartItems.length > 0")
@@ -231,24 +165,21 @@ watch(() => props.isActive, async (newValue) => {
               .cart-item__controls
                 .cart-item__quantity
                   button.cart-item__quantity-btn(
-                    @click="handleDecrement(item.id, item.quantity)"
+                    @click="handleDecrement(item)"
                     :disabled="item.quantity <= 1"
                   ) -
                   input.cart-item__quantity-input(
                     type="number"
                     inputmode="numeric"
-                    :value="cartItemInputs.get(item.id)"
-                    @input="(e) => handleInput(item.id, e)"
-                    @blur="(e) => handleBlur(item.id, e)"
-                    :max="100"
+                    :value="item.quantity"
+                    @input="(e) => handleInput(item, e)"
                     min="1"
-                    :disabled="conflicts.has(item.id)"
                   )
                   button.cart-item__quantity-btn(
-                    @click="handleIncrement(item.id, item.quantity)"
-                    :disabled="isItemUnavailable(item) || item.quantity >= 100 || conflicts.has(item.id)"
+                    @click="handleIncrement(item)"
+                    :disabled="item.quantity >= 100"
                   ) +
-                .cart-item__sync-status
+                .cart-item__sync-status(v-if="item.lastSynchronized")
                   span Last synced:
                   span {{ item.lastSynchronized }}
                 button.cart-item__remove(@click="handleRemoveFromCart(item.id)")
@@ -316,6 +247,7 @@ watch(() => props.isActive, async (newValue) => {
     top: -8px
     right: -8px
     background-color: $custom-red
+    padding: 2px
     color: white
     border-radius: 50%
     min-width: 20px
@@ -335,7 +267,7 @@ watch(() => props.isActive, async (newValue) => {
   &__items
     max-height: 400px
     overflow-y: auto
-    padding: 10px 0 10px 10px
+    padding: 10px 10px 10px 10px
 
     @media (max-width: 599px)
       padding: 10px 5px 10px 10px
