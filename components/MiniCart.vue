@@ -38,6 +38,7 @@ const checkQuantityConflicts = async () => {
   }
   
   conflicts.value = newConflicts
+  console.log('CONFLICTS', conflicts.value)
 }
 
 const handleRemoveFromCart = async (id: string) => {
@@ -105,6 +106,7 @@ const handleDecrement = debounce(async (product: Product) => {
   if ((product.quantity || 0) <= product.maxQuantity) {
     conflicts.value.delete(product.id)
   }
+  console.log('CONFLICTS DEC', conflicts.value)
 }, 150)
 
 const handleIncrement = debounce(async (item: Product) => {
@@ -122,6 +124,7 @@ const handleIncrement = debounce(async (item: Product) => {
   } else {
     conflicts.value.delete(item.id)
   }
+  console.log('CONFLICTS INC', conflicts.value)
 }, 150)
 
 watch(() => props.isActive, async (newValue) => {
