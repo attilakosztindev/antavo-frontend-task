@@ -1,10 +1,11 @@
 <script lang="ts" setup>
-import { debounce } from 'lodash'
+import pkg from 'lodash'
 import { useCart } from '~/composables/useCart'
 import { formatCurrency } from '~/utils/formatCurrency'
 import { useProducts } from '~/composables/useProducts'
 import type { Product } from '~/types/inventory'
 
+const { debounce } = pkg
 const { cartItems, removeFromCart, updateQuantity, subtotal, itemCount } = useCart()
 const { fetchSingleProduct } = useProducts()
 
@@ -88,16 +89,16 @@ const handleInput = debounce(async (item: Product, event: Event) => {
 }, 150)
 
 const handleDecrement = debounce(async (product: Product) => {
-  if ((product.quantity || 0) <= 1) return
+  if (!product.quantity || product.quantity <= 1) return
   
   const updatedProduct = await fetchSingleProduct(product.id)
 
   if (updatedProduct) product.maxQuantity = updatedProduct.maxQuantity
 
 
-  if (conflicts.value.has(product.id)) product.quantity = product.maxQuantity
+  if (conflicts.value.has(product.id) && product.quantity > product.maxQuantity ) product.quantity = product.maxQuantity
   else {
-    const newQuantity = (product.quantity || 0) - 1
+    const newQuantity = product.quantity - 1
     await updateQuantity(product.id, newQuantity)
   }
 
@@ -304,6 +305,7 @@ watch(() => props.isActive, async (newValue) => {
   display: flex
   flex-direction: column
   padding: 10px
+  transition: background-color .3s
   
   &:not(:last-child)
     border-bottom: 1px solid #eee
@@ -404,7 +406,7 @@ watch(() => props.isActive, async (newValue) => {
 
   &--conflict
     background-color: rgba(255, 0, 0, 0.05)
-    border: 1px solid rgba(255, 0, 0, 0.2) !important
+    box-shadow: inset 0 0 0 1px rgba(255, 0, 0, 0.2) !important
 
   &__warning
     color: $custom-red
