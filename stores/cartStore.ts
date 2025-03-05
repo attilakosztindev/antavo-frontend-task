@@ -10,8 +10,7 @@ export const useCart = defineStore('cart', {
   }),
 
   hydrate(state) {
-    const { $isClient } = useNuxtApp()
-    if ($isClient) {
+    if (process.client) {
       const savedCart = localStorage.getItem('cart')
 
       if (savedCart) {
