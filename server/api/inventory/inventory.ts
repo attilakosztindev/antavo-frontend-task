@@ -1,13 +1,13 @@
 import type { Product } from '~/types/inventory'
 
-const getRandomQuantity = () => Math.floor(Math.random() * 101)
+const getRandomQuantity = () => Math.floor(Math.random() * 99)
 
 export const mockInventory: Product[] = [
   {
     id: '1',
     name: 'Organic Single-Origin Ethiopian Yirgacheffe Coffee Beans',
-    imageUrl: '/product1.jpg',
-    maxQuantity: getRandomQuantity(),
+    imageUrl: '/product.jpg',
+    maxQuantity: 50,
     lastUpdated: new Date().toISOString(),
     badges: [{ title: 'New', background_color: '#2E7D32' }],
     price: {
@@ -22,7 +22,7 @@ export const mockInventory: Product[] = [
     id: '2',
     name: 'Premium Earl Grey Imperial Blend Tea Bags',
     imageUrl: 'https://images.unsplash.com/photo-1564890369478-c89ca6d9cde9?w=500&q=80',
-    maxQuantity: getRandomQuantity(),
+    maxQuantity: 20,
     lastUpdated: new Date().toISOString(),
     badges: [],
     price: {
@@ -37,7 +37,7 @@ export const mockInventory: Product[] = [
     id: '3',
     name: 'Artisanal Raw Cane Sugar Crystal Collection',
     imageUrl: 'https://images.unsplash.com/photo-1581441363689-1f3c3c414635?w=500&q=80',
-    maxQuantity: getRandomQuantity(),
+    maxQuantity: 200,
     lastUpdated: new Date().toISOString(),
     badges: [{ title: 'New', background_color: '#2E7D32' }],
     price: {
@@ -52,7 +52,7 @@ export const mockInventory: Product[] = [
     id: '4',
     name: 'Artisanal Hand-Crafted Chocolate-Dipped Biscotti Collection',
     imageUrl: 'https://images.unsplash.com/photo-1548848221-0c2e497ed557?w=500&q=80',
-    maxQuantity: getRandomQuantity(),
+    maxQuantity: 45,
     lastUpdated: new Date().toISOString(),
     badges: [{ title: '-25%', background_color: '#C62828' }],
     price: {
@@ -67,7 +67,7 @@ export const mockInventory: Product[] = [
     id: '5',
     name: 'Ultimate Barista Pro Deluxe Coffee Grinder 3000',
     imageUrl: '',
-    maxQuantity: getRandomQuantity(),
+    maxQuantity: 75,
     lastUpdated: new Date().toISOString(),
     badges: [],
     price: {
@@ -82,7 +82,7 @@ export const mockInventory: Product[] = [
     id: '6',
     name: 'Midnight Mystery Limited Reserve Single-Origin Coffee',
     imageUrl: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=500&q=80',
-    maxQuantity: getRandomQuantity(),
+    maxQuantity: 90,
     lastUpdated: new Date().toISOString(),
     badges: [{ title: 'New', background_color: '#2E7D32' }],
     price: {
@@ -97,7 +97,7 @@ export const mockInventory: Product[] = [
     id: '7',
     name: 'Rainbow Unicorn Birthday Cake Flavored Coffee Pods',
     imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=500&q=80',
-    maxQuantity: getRandomQuantity(),
+    maxQuantity: 95,
     lastUpdated: new Date().toISOString(),
     badges: [],
     price: {
@@ -114,12 +114,8 @@ setInterval(() => {
   mockInventory.forEach(item => {
     item.maxQuantity = getRandomQuantity()
     item.lastUpdated = new Date().toISOString()
-    item.in_stock = item.maxQuantity > 0
   })
 }, 60000)
-
-export const simulateDelay = () => new Promise(resolve => setTimeout(resolve, Math.random() * 800 + 200))
-export const simulateConflict = () => Math.random() < 0.2
 
 export default defineEventHandler((event) => {
   const id = event.context.params?.id

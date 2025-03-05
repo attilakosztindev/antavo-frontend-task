@@ -3,9 +3,9 @@ import type { Product } from '~/types/inventory'
 export function useProducts() {
   const error = ref<string | null>(null)
   const loading = ref<boolean>(false)
-  
-  const productCache = ref(new Map<string, { lastUpdated: string; maxQuantity: number }>())
 
+  const productCache = new Map<string, { data: Product; timestamp: number; maxAge: number }>()
+  
   const fetchProducts = async () => {
     loading.value = true
     error.value = null
@@ -20,38 +20,39 @@ export function useProducts() {
     }
   }
 
-  const fetchSingleProduct = async (id: string, lastUpdated?: string) => {
-    loading.value = true
-    error.value = null
+  const pendingRequests = new Map<string, Promise<Product>>()
+
+  const fetchSingleProduct = async (id: string, force: boolean = false) => {
+    const isCached = productCache.get(id)
+    const now = Date.now()
+    
+    if (!force && isCached && (now - isCached.timestamp) < isCached.maxAge) return isCached.data
+  
+    if (pendingRequests.has(id)) return pendingRequests.get(id)
+    
+    const request = $fetch<Product>(`/api/inventory/${id}`, {
+      method: 'POST',
+      body: { lastUpdated: isCached?.data.lastUpdated }
+    })
+    
+    pendingRequests.set(id, request)
+    
     try {
-      const cachedProduct = productCache.value.get(id)
-      
-      const response = await $fetch<Product>(`/api/inventory/${id}`, {
-        method: 'POST',
-        body: {
-          lastUpdated: lastUpdated || cachedProduct?.lastUpdated
-        }
-      })
-
-      if (!response) {
-        return cachedProduct ? { ...cachedProduct, id, maxQuantity: cachedProduct.maxQuantity } : null
-      }
-
-      const newCacheEntry = { 
-        lastUpdated: response.lastUpdated || new Date().toISOString(),
-        maxQuantity: response.maxQuantity || 0
+      const response = await request
+      if (response) {
+        productCache.set(id, {
+          data: response,
+          timestamp: now,
+          maxAge: 6000000
+        })
       }
       
-      productCache.value.set(id, newCacheEntry)
       return response
-
-    } catch (err) {
-      error.value = err instanceof Error ? err.message : 'An error has occurred'
-      return null
     } finally {
-      loading.value = false
+      pendingRequests.delete(id)
     }
   }
+  
 
   return {
     error,

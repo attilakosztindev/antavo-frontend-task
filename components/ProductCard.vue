@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { formatCurrency } from '~/utils/formatCurrency'
-import { useCart } from '~/composables/useCart'
+import { useCart } from '~/stores/cartStore'
 import { useProducts } from '~/composables/useProducts'
 import type { Product } from '~/types/inventory'
 
 const { $isClient } = useNuxtApp()
-const { addToCart, cartItems } = useCart()
+const cart = useCart()
 const { fetchSingleProduct } = useProducts()
 
 const maxAvailableQuantity = ref<number | null>(null)
@@ -27,7 +27,7 @@ const isOutOfStock = computed(() => {
 const remainingQuantity = computed(() => {
   if (maxAvailableQuantity.value === null) return props.product.maxQuantity
   
-  const cartItem = cartItems.value.find(item => item.id === props.product.id)
+  const cartItem = cart.items.find(item => item.id === props.product.id)
   const cartQuantity = cartItem?.quantity || 0
   
   return maxAvailableQuantity.value - cartQuantity
@@ -43,7 +43,7 @@ const checkTotalQuantity = async () => {
 
 const handleAddToCart = async () => {
   if (!props.product.in_stock) return
-  addToCart({ ...props.product }, selectedQuantity.value)
+  cart.addToCart({ ...props.product }, selectedQuantity.value)
   selectedQuantity.value = 1
 }
 
@@ -51,7 +51,7 @@ const resetState = async () => {
   const updatedProduct = await fetchSingleProduct(props.product.id)
   if (!updatedProduct) return
   
-  const cartItem = cartItems.value.find(item => item.id === props.product.id)
+  const cartItem = cart.items.find(item => item.id === props.product.id)
   
   if (!cartItem) {
     isUnavailable.value = false
@@ -75,7 +75,7 @@ watch(remainingQuantity, async (newValue) => {
   }
 })
 
-watch(cartItems, async (newItems) => {
+watch(cart.items, async (newItems) => {
   const currentProduct = props.product
   const cartItem = newItems.find((item: Product) => item.id === currentProduct.id)
   

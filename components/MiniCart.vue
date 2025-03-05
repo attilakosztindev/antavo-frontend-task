@@ -1,12 +1,12 @@
 <script lang="ts" setup>
 import pkg from 'lodash'
-import { useCart } from '~/composables/useCart'
+import { useCart } from '~/stores/cartStore'
 import { formatCurrency } from '~/utils/formatCurrency'
 import { useProducts } from '~/composables/useProducts'
 import type { Product } from '~/types/inventory'
 
 const { debounce } = pkg
-const { cartItems, removeFromCart, updateQuantity, subtotal, itemCount } = useCart()
+const cart = useCart()
 const { fetchSingleProduct } = useProducts()
 
 const emit = defineEmits(['update:isActive', 'conflict-resolved'])
@@ -19,6 +19,7 @@ const props = defineProps({
 
 const updatedProducts = ref(new Map<string, number>())
 const conflicts = ref<Set<string>>(new Set())
+const batchUpdate = ref<Map<string, number>>(new Map())
 
 const closeDropdown = () => {
   emit('update:isActive', false)
@@ -27,7 +28,7 @@ const closeDropdown = () => {
 const checkQuantityConflicts = async () => {
   const newConflicts = new Set<string>()
   
-  for (const item of cartItems.value) {
+  for (const item of cart.items) {
     const updatedProduct = await fetchSingleProduct(item.id)
 
     if (!updatedProduct) continue
@@ -38,11 +39,10 @@ const checkQuantityConflicts = async () => {
   }
   
   conflicts.value = newConflicts
-  console.log('CONFLICTS', conflicts.value)
 }
 
 const handleRemoveFromCart = async (id: string) => {
-  removeFromCart(id)
+  cart.removeFromCart(id)
   conflicts.value.delete(id)
   emit('conflict-resolved', id)
 }
@@ -53,8 +53,8 @@ const handleCheckout = async () => {
   alert('Checkout successful')
 }
 
-const updateCartItems = async () => {
-  for (const item of cartItems.value) {
+const updatecart = async () => {
+  for (const item of cart.items) {
     const product = await fetchSingleProduct(item.id)
     if (product) updatedProducts.value.set(item.id, product.maxQuantity || 0)
   }
@@ -64,12 +64,10 @@ const isItemUnavailable = (item: Product) => (item.quantity || 0) >= item.maxQua
 
 const handleInput = debounce(async (item: Product, event: Event) => {
   const input = event.target as HTMLInputElement
-  const currentItem = cartItems.value.find((cartItem) => cartItem.id === item.id)
+  const currentItem = cart.items.find((cartItem) => cartItem.id === item.id)
   const product = await fetchSingleProduct(item.id)
 
-  if (product && currentItem) {
-    currentItem.maxQuantity = product.maxQuantity
-  }
+  if (product && currentItem) currentItem.maxQuantity = product.maxQuantity
 
   if (currentItem) {
     let newQuantity = parseInt(input.value) || 1
@@ -79,13 +77,10 @@ const handleInput = debounce(async (item: Product, event: Event) => {
       input.value = '100'
     }
 
-    await updateQuantity(currentItem.id, newQuantity)
+    await cart.updateQuantity(currentItem.id, newQuantity)
     
-    if (newQuantity > currentItem.maxQuantity) {
-      conflicts.value.add(item.id)
-    } else {
-      conflicts.value.delete(item.id)
-    }
+    if (newQuantity > currentItem.maxQuantity) conflicts.value.add(item.id)
+    else conflicts.value.delete(item.id)
   }
 }, 150)
 
@@ -100,13 +95,12 @@ const handleDecrement = debounce(async (product: Product) => {
   if (conflicts.value.has(product.id) && product.quantity > product.maxQuantity ) product.quantity = product.maxQuantity
   else {
     const newQuantity = product.quantity - 1
-    await updateQuantity(product.id, newQuantity)
+    await cart.updateQuantity(product.id, newQuantity)
   }
 
   if ((product.quantity || 0) <= product.maxQuantity) {
     conflicts.value.delete(product.id)
   }
-  console.log('CONFLICTS DEC', conflicts.value)
 }, 150)
 
 const handleIncrement = debounce(async (item: Product) => {
@@ -117,19 +111,31 @@ const handleIncrement = debounce(async (item: Product) => {
   }
 
   const newQuantity = (item.quantity || 0) + 1
-  await updateQuantity(item.id, newQuantity)
+  await cart.updateQuantity(item.id, newQuantity)
   
   if (newQuantity > item.maxQuantity) {
     conflicts.value.add(item.id)
   } else {
     conflicts.value.delete(item.id)
   }
-  console.log('CONFLICTS INC', conflicts.value)
 }, 150)
 
-watch(() => props.isActive, async (newValue) => {
-  if (newValue) {
-    await updateCartItems()
+const processBatchUpdate = debounce(async () => {
+  const updates = Array.from(batchUpdate.value.entries())
+  for (const [id, quantity] of updates) {
+    await cart.updateQuantity(id, quantity)
+  }
+  batchUpdate.value.clear()
+}, 150)
+
+const handleQuantityChange = (id: string, quantity: number) => {
+  batchUpdate.value.set(id, quantity)
+  processBatchUpdate()
+}
+
+watch(() => props.isActive, async (newVal) => {
+  if (newVal) {
+    await updatecart()
     await checkQuantityConflicts()
   }
 }, { immediate: true })
@@ -147,12 +153,12 @@ watch(() => props.isActive, async (newValue) => {
       alt="Cart"
     )
   ClientOnly
-    .cart__counter(:class="{ 'cart__counter--visible': itemCount > 0 }") {{ itemCount > 99 ? '99+' : itemCount }}
+    .cart__counter(:class="{ 'cart__counter--visible': cart.itemCount > 0 }") {{ cart.itemCount > 99 ? '99+' : cart.itemCount }}
   transition(name="fade")
     .cart__dropdown(v-if="isActive")
-      .cart__items(v-if="cartItems.length > 0")
+      .cart__items(v-if="cart.items.length > 0")
         .cart-item(
-          v-for="item in cartItems"
+          v-for="item in cart.items"
           :key="item.id"
           :class="{ 'cart-item--conflict': conflicts.has(item.id) }"
         )
@@ -194,10 +200,10 @@ watch(() => props.isActive, async (newValue) => {
           .cart-item__warning(v-if="conflicts.has(item.id)")
             span The maximum quantity has been exceeded, please decrease the quantity or remove the item
       .cart__summary
-        .cart__total(v-if="cartItems.length > 0")
+        .cart__total(v-if="cart.items.length > 0")
           span Total:
-          span {{ formatCurrency(subtotal) }}
-        .cart__checkout(v-if="cartItems.length > 0")
+          span {{ formatCurrency(cart.subtotal) }}
+        .cart__checkout(v-if="cart.items.length > 0")
           AppButton(
             label="CHECKOUT"
             @click="handleCheckout"
