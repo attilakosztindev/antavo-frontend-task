@@ -8,6 +8,7 @@ export const mockInventory: Product[] = [
     name: 'Organic Single-Origin Ethiopian Yirgacheffe Coffee Beans',
     imageUrl: '/product.jpg',
     maxQuantity: 50,
+    quantity: 0,
     lastUpdated: new Date().toISOString(),
     badges: [{ title: 'New', background_color: '#2E7D32' }],
     price: {
@@ -23,6 +24,7 @@ export const mockInventory: Product[] = [
     name: 'Premium Earl Grey Imperial Blend Tea Bags',
     imageUrl: 'https://images.unsplash.com/photo-1564890369478-c89ca6d9cde9?w=500&q=80',
     maxQuantity: 20,
+    quantity: 0,
     lastUpdated: new Date().toISOString(),
     badges: [],
     price: {
@@ -38,6 +40,7 @@ export const mockInventory: Product[] = [
     name: 'Artisanal Raw Cane Sugar Crystal Collection',
     imageUrl: 'https://images.unsplash.com/photo-1581441363689-1f3c3c414635?w=500&q=80',
     maxQuantity: 200,
+    quantity: 0,
     lastUpdated: new Date().toISOString(),
     badges: [{ title: 'New', background_color: '#2E7D32' }],
     price: {
@@ -53,6 +56,7 @@ export const mockInventory: Product[] = [
     name: 'Artisanal Hand-Crafted Chocolate-Dipped Biscotti Collection',
     imageUrl: 'https://images.unsplash.com/photo-1548848221-0c2e497ed557?w=500&q=80',
     maxQuantity: 45,
+    quantity: 0,
     lastUpdated: new Date().toISOString(),
     badges: [{ title: '-25%', background_color: '#C62828' }],
     price: {
@@ -68,6 +72,7 @@ export const mockInventory: Product[] = [
     name: 'Ultimate Barista Pro Deluxe Coffee Grinder 3000',
     imageUrl: '',
     maxQuantity: 75,
+    quantity: 0,
     lastUpdated: new Date().toISOString(),
     badges: [],
     price: {
@@ -83,6 +88,7 @@ export const mockInventory: Product[] = [
     name: 'Midnight Mystery Limited Reserve Single-Origin Coffee',
     imageUrl: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=500&q=80',
     maxQuantity: 90,
+    quantity: 0,
     lastUpdated: new Date().toISOString(),
     badges: [{ title: 'New', background_color: '#2E7D32' }],
     price: {
@@ -98,6 +104,7 @@ export const mockInventory: Product[] = [
     name: 'Rainbow Unicorn Birthday Cake Flavored Coffee Pods',
     imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=500&q=80',
     maxQuantity: 95,
+    quantity: 0,
     lastUpdated: new Date().toISOString(),
     badges: [],
     price: {
@@ -113,6 +120,7 @@ export const mockInventory: Product[] = [
 setInterval(() => {
   mockInventory.forEach(item => {
     item.maxQuantity = getRandomQuantity()
+    item.quantity = 0
     item.lastUpdated = new Date().toISOString()
   })
 }, 60000)

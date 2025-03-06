@@ -7,7 +7,7 @@ import type { Product } from '~/types/inventory'
 
 const { debounce } = pkg
 const cart = useCart()
-const { fetchSingleProduct } = useProducts()
+const { fetchSingleProduct, fetchProducts } = useProducts()
 
 const emit = defineEmits(['update:isActive', 'conflict-resolved'])
 const props = defineProps({
@@ -28,16 +28,22 @@ const closeDropdown = () => {
 const checkQuantityConflicts = async () => {
   const newConflicts = new Set<string>()
   
-  for (const item of cart.items) {
-    const updatedProduct = await fetchSingleProduct(item.id)
-
-    if (!updatedProduct) continue
-
-    if ((item.quantity || 0) > updatedProduct.maxQuantity) {
-      newConflicts.add(item.id)
+  const products = await fetchProducts()
+  const productsMap = new Map(products.map(product => [product.id, product]))
+  
+  for (const cartItem of cart.items) {
+    const updatedproduct = productsMap.get(cartItem.id)
+    if (!updatedproduct) continue
+    
+    if (cartItem.maxQuantity !== updatedproduct.maxQuantity) {
+      cartItem.maxQuantity = updatedproduct.maxQuantity
+      cartItem.lastSynchronized = new Date().toLocaleString('hu-HU')
     }
+
+    if (cartItem.quantity > updatedproduct.maxQuantity) newConflicts.add(cartItem.id)
   }
   
+  cart.saveToLocalStorage()
   conflicts.value = newConflicts
 }
 
@@ -47,11 +53,11 @@ const handleRemoveFromCart = async (id: string) => {
   emit('conflict-resolved', id)
 }
 
-const handleCheckout = async () => {
+const handleCheckout = debounce(async () => {
   await checkQuantityConflicts()
   if (conflicts.value.size > 0) return
   alert('Checkout successful')
-}
+}, 150)
 
 const updatecart = async () => {
   for (const item of cart.items) {
@@ -60,51 +66,39 @@ const updatecart = async () => {
   }
 }
 
-const isItemUnavailable = (item: Product) => (item.quantity || 0) >= item.maxQuantity
+const isItemUnavailable = (product: Product) => product.quantity >= product.maxQuantity
 
-const handleInput = debounce(async (item: Product, event: Event) => {
+const handleInput = debounce(async (product: Product, event: Event) => {
   const input = event.target as HTMLInputElement
-  const currentItem = cart.items.find((cartItem) => cartItem.id === item.id)
   let newQuantity = parseInt(input.value) || 1
 
   if (newQuantity > 100) {
     newQuantity = 100  
     input.value = '100'
   }
+  const updatedProduct = await cart.updateQuantity(product.id, newQuantity)
 
-  const product = await fetchSingleProduct(item.id)
-
-  if (product && currentItem) currentItem.maxQuantity = product.maxQuantity
-
-  if (currentItem) {
-    await cart.updateQuantity(currentItem.id, newQuantity)
-
-    if (newQuantity > currentItem.maxQuantity) conflicts.value.add(item.id)
-    else conflicts.value.delete(item.id)
-  }
+  if (newQuantity > updatedProduct.maxQuantity) conflicts.value.add(product.id)
+  else conflicts.value.delete(product.id)
 }, 150)
 
 const handleDecrement = debounce(async (product: Product) => {
   if (!product.quantity) return
 
   const updatedProduct = await cart.updateQuantity(product.id, product.quantity - 1)
-  if (updatedProduct && updatedProduct.quantity) {
-    product.quantity = Math.min(updatedProduct.quantity, updatedProduct.maxQuantity)
-  
-    if (updatedProduct.quantity <= updatedProduct.maxQuantity) conflicts.value.delete(product.id)
-  }
+  product.quantity = Math.min(updatedProduct.quantity, updatedProduct.maxQuantity)
+
+  if (updatedProduct.quantity <= updatedProduct.maxQuantity) conflicts.value.delete(product.id)
 }, 150)
 
 const handleIncrement = debounce(async (product: Product) => {
   if (!product.quantity) return
 
   const updatedProduct = await cart.updateQuantity(product.id, product.quantity + 1)
-  if (updatedProduct && updatedProduct.quantity) {
-    product.quantity = updatedProduct.quantity
-
-    if (updatedProduct.quantity > updatedProduct.maxQuantity) conflicts.value.add(product.id)
-    else conflicts.value.delete(product.id)
-  }
+  product.quantity = updatedProduct.quantity
+  
+  if (updatedProduct.quantity > updatedProduct.maxQuantity) conflicts.value.add(product.id)
+  else conflicts.value.delete(product.id)
 }, 150)
 
 const processBatchUpdate = debounce(async () => {

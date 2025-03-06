@@ -26,9 +26,15 @@ export function useProducts() {
     const isCached = productCache.get(id)
     const now = Date.now()
     
-    if (!force && isCached && (now - isCached.timestamp) < isCached.maxAge) return isCached.data
-  
-    if (pendingRequests.has(id)) return pendingRequests.get(id)
+    if (!force && isCached && (now - isCached.timestamp) < isCached.maxAge) {
+      return isCached.data
+    }
+
+    if (pendingRequests.has(id)) {
+      const result = await pendingRequests.get(id)
+      if (!result) throw new Error(`Failed to fetch product ${id}`)
+      return result
+    }
     
     const request = $fetch<Product>(`/api/inventory/${id}`, {
       method: 'POST',
@@ -39,13 +45,13 @@ export function useProducts() {
     
     try {
       const response = await request
-      if (response) {
-        productCache.set(id, {
-          data: response,
-          timestamp: now,
-          maxAge: 6000000
-        })
-      }
+      if (!response) throw new Error(`Failed to fetch product ${id}`)
+      
+      productCache.set(id, {
+        data: response,
+        timestamp: now,
+        maxAge: 6000000
+      })
       
       return response
     } finally {

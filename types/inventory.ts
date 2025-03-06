@@ -3,7 +3,7 @@ export interface Product {
   name: string
   imageUrl: string
   maxQuantity: number
-  quantity?: number
+  quantity: number
   lastUpdated: string
   lastSynchronized?: string
   badges: Array<{ title: string; background_color: string }>

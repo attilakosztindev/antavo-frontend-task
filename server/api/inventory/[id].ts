@@ -10,10 +10,5 @@ export default defineEventHandler(async (event) => {
   
   if (!product) throw createError({ statusCode: 404, message: `Product ${id} not found` })
 
-  if (event.method === 'POST') {
-    const body = await readBody(event)
-    if (body.lastUpdated === product.lastUpdated) return null
-  }
-
   return product
-}) 
+})

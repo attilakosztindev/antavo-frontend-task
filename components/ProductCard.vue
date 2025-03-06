@@ -4,7 +4,6 @@ import { useCart } from '~/stores/cartStore'
 import { useProducts } from '~/composables/useProducts'
 import type { Product } from '~/types/inventory'
 
-const { $isClient } = useNuxtApp()
 const cart = useCart()
 const { fetchSingleProduct } = useProducts()
 
@@ -104,7 +103,7 @@ onMounted(async () => {
   
   const cartItem = cart.getCartItem(props.product.id)
   const currentMaxQuantity = cartItem?.maxQuantity ?? props.product.maxQuantity
-  
+
   if (cartItem && (cartItem.quantity || 0) >= currentMaxQuantity) {
     isUnavailable.value = true
     selectedQuantity.value = 0

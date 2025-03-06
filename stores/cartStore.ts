@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia'
 import { useProducts } from '~/composables/useProducts'
-import { useNuxtApp } from '#app'
 import type { Product } from '~/types/inventory'
 
 export const useCart = defineStore('cart', {
@@ -83,21 +82,24 @@ export const useCart = defineStore('cart', {
       this.saveToLocalStorage()
     },
 
-    async updateQuantity(productId: string, quantity: number) {
+    async updateQuantity(productId: string, quantity: number): Promise<Product> {
       const product = this.items.find(product => product.id === productId)
-      if (!product || !product.quantity) return
+      if (!product || !product.quantity) throw new Error(`Product ${productId} not found in cart or has invalid quantity`)
       
-      const { fetchSingleProduct } = useProducts()
-      const updatedProduct = await fetchSingleProduct(productId)
-      if (updatedProduct && updatedProduct.maxQuantity !== product.maxQuantity) {
+      try {
+        const { fetchSingleProduct } = useProducts()
+        const updatedProduct = await fetchSingleProduct(productId)
+        
         product.maxQuantity = updatedProduct.maxQuantity
         product.lastSynchronized = new Date().toLocaleString('hu-HU')
+        product.quantity = quantity
+        
+        this.saveToLocalStorage()
+        return product
+      } catch (error) {
+        console.error(`Failed to update product ${productId}:`, error)
+        return product
       }
-
-      product.quantity = quantity
-      
-      this.saveToLocalStorage()
-      return product
     },
 
     getCartItem(productId: string) {

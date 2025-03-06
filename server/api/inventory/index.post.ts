@@ -11,6 +11,7 @@ export default defineEventHandler(async (event) => {
     name: body.name,
     imageUrl: body.imageUrl,
     maxQuantity: body.quantity || 0,
+    quantity: 0,
     lastUpdated: new Date().toISOString(),
     badges: [],
     price: {
