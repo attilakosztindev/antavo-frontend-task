@@ -11,7 +11,7 @@ const { fetchSingleProduct } = useProducts()
 const maxAvailableQuantity = ref<number | null>(null)
 const isActive = ref<boolean>(false)
 const isUnavailable = ref<boolean>(false)
-const selectedQuantity = ref<number>(1)
+const selectedQuantity = ref<number>(0)
 
 const props = defineProps({
   product: {
@@ -20,17 +20,24 @@ const props = defineProps({
   }
 })
 
+const cartItem = computed(() => {
+  return cart.getCartItem(props.product.id)
+})
+
 const isOutOfStock = computed(() => {
   return maxAvailableQuantity.value === 0 || !props.product.in_stock
 })
 
 const remainingQuantity = computed(() => {
-  if (maxAvailableQuantity.value === null) return props.product.maxQuantity
-  
-  const cartItem = cart.items.find(item => item.id === props.product.id)
-  const cartQuantity = cartItem?.quantity || 0
-  
-  return maxAvailableQuantity.value - cartQuantity
+  const cartQuantity = cartItem.value?.quantity || 0
+  const currentMaxQuantity = cartItem.value?.maxQuantity ?? props.product.maxQuantity
+  return currentMaxQuantity - cartQuantity
+})
+
+const initialQuantity = computed(() => {
+  if (isUnavailable.value) return 0
+  const remaining = remainingQuantity.value
+  return remaining > 0 ? 1 : 0
 })
 
 const checkTotalQuantity = async () => {
@@ -43,8 +50,7 @@ const checkTotalQuantity = async () => {
 
 const handleAddToCart = async () => {
   if (!props.product.in_stock) return
-  cart.addToCart({ ...props.product }, selectedQuantity.value)
-  selectedQuantity.value = 1
+  await cart.addToCart({ ...props.product }, selectedQuantity.value)
 }
 
 const resetState = async () => {
@@ -55,7 +61,7 @@ const resetState = async () => {
   
   if (!cartItem) {
     isUnavailable.value = false
-    selectedQuantity.value = 1
+    selectedQuantity.value = 0
   }
 }
 
@@ -64,55 +70,47 @@ const getBgColor = (title: string) => {
   return badge?.background_color || '#000000'
 }
 
-
 watch(remainingQuantity, async (newValue) => {
   if (newValue <= 0) {
     isUnavailable.value = true
     selectedQuantity.value = 0
   } else {
     isUnavailable.value = false
-    if (selectedQuantity.value === 0) selectedQuantity.value = 1
+
+    if (selectedQuantity.value === 0) selectedQuantity.value = initialQuantity.value
   }
 })
 
 watch(cart.items, async (newItems) => {
   const currentProduct = props.product
-  const cartItem = newItems.find((item: Product) => item.id === currentProduct.id)
+  const cartItem = cart.getCartItem(currentProduct.id)
   
-  const updatedProduct = await fetchSingleProduct(currentProduct.id)
-  if (!updatedProduct) return
+  const currentMaxQuantity = cartItem?.maxQuantity ?? props.product.maxQuantity
   
-  maxAvailableQuantity.value = updatedProduct.maxQuantity
-  
-  if (!cartItem) {
-    isUnavailable.value = false
-    selectedQuantity.value = 1
-  } else if ((cartItem.quantity || 0) >= updatedProduct.maxQuantity) {
+  if (cartItem && (cartItem.quantity || 0) >= currentMaxQuantity) {
     isUnavailable.value = true
     selectedQuantity.value = 0
+  } else {
+    isUnavailable.value = false
+
+    if (selectedQuantity.value === 0) selectedQuantity.value = 1
+
+    if (selectedQuantity.value > remainingQuantity.value) selectedQuantity.value = remainingQuantity.value
   }
 }, { deep: true })
 
 onMounted(async () => {
   await checkTotalQuantity()
-  if ($isClient) {
-    window.addEventListener('max-quantity-reached', ((event: CustomEvent) => {
-      if (event.detail.productId === props.product.id) {
-        isUnavailable.value = true
-        selectedQuantity.value = 0
-      }
-    }) as EventListener)
-  }
-})
-
-onUnmounted(() => {
-  if ($isClient) {
-    window.removeEventListener('max-quantity-reached', ((event: CustomEvent) => {
-      if (event.detail.productId === props.product.id) {
-        isUnavailable.value = true
-        selectedQuantity.value = 0
-      }
-    }) as EventListener)
+  
+  const cartItem = cart.getCartItem(props.product.id)
+  const currentMaxQuantity = cartItem?.maxQuantity ?? props.product.maxQuantity
+  
+  if (cartItem && (cartItem.quantity || 0) >= currentMaxQuantity) {
+    isUnavailable.value = true
+    selectedQuantity.value = 0
+  } else {
+    isUnavailable.value = false
+    selectedQuantity.value = initialQuantity.value
   }
 })
 </script>
@@ -182,6 +180,8 @@ section.product-card(
           v-model="selectedQuantity"
           :is-unavailable="isUnavailable"
           :max-allowed="100"
+          :product-id="product.id"
+          :cart-quantity="cartItem?.quantity"
         )
       AppButton(
         icon="icon_buy.svg"

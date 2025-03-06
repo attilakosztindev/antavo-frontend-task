@@ -84,33 +84,27 @@ const handleInput = debounce(async (item: Product, event: Event) => {
   }
 }, 150)
 
-const handleDecrement = async (product: Product) => {
-  if (!product.quantity || product.quantity <= 1) return
+const handleDecrement = debounce(async (product: Product) => {
+  if (!product.quantity) return
+
+  const updatedProduct = await cart.updateQuantity(product.id, product.quantity - 1)
+  if (updatedProduct && updatedProduct.quantity) {
+    product.quantity = Math.min(updatedProduct.quantity, updatedProduct.maxQuantity)
   
-  const updatedProduct = await fetchSingleProduct(product.id)
-
-  if (updatedProduct) product.maxQuantity = updatedProduct.maxQuantity
-
-
-  if (conflicts.value.has(product.id) || product.quantity > product.maxQuantity ) product.quantity = product.maxQuantity
-  else {
-    const newQuantity = product.quantity - 1
-    await cart.updateQuantity(product.id, newQuantity)
+    if (updatedProduct.quantity <= updatedProduct.maxQuantity) conflicts.value.delete(product.id)
   }
+}, 150)
 
-  if ((product.quantity || 0) <= product.maxQuantity) conflicts.value.delete(product.id)
-}
+const handleIncrement = debounce(async (product: Product) => {
+  if (!product.quantity) return
 
-const handleIncrement = debounce(async (item: Product) => {
-  const product = await fetchSingleProduct(item.id)
+  const updatedProduct = await cart.updateQuantity(product.id, product.quantity + 1)
+  if (updatedProduct && updatedProduct.quantity) {
+    product.quantity = updatedProduct.quantity
 
-  if (product) item.maxQuantity = product.maxQuantity
-
-  const newQuantity = (item.quantity || 0) + 1
-  await cart.updateQuantity(item.id, newQuantity)
-  
-  if (newQuantity > item.maxQuantity) conflicts.value.add(item.id)
-  else conflicts.value.delete(item.id)
+    if (updatedProduct.quantity > updatedProduct.maxQuantity) conflicts.value.add(product.id)
+    else conflicts.value.delete(product.id)
+  }
 }, 150)
 
 const processBatchUpdate = debounce(async () => {

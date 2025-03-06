@@ -61,14 +61,15 @@ export const useCart = defineStore('cart', {
 
       if (existingItem) {
         existingItem.quantity = (existingItem.quantity || 0) + quantity
-        if (updatedProduct) {
-          existingItem.lastSynchronized = new Date().toLocaleString('hu-HU')
+        if (updatedProduct && updatedProduct.maxQuantity !== existingItem.maxQuantity) {
           existingItem.maxQuantity = updatedProduct.maxQuantity
+          existingItem.lastSynchronized = new Date().toLocaleString('hu-HU')
         }
       } else {
         const newItem = {
           ...product,
           quantity,
+          maxQuantity: updatedProduct?.maxQuantity ?? product.maxQuantity,
           lastSynchronized: new Date().toLocaleString('hu-HU')
         }
         this.items.push(newItem)
@@ -83,20 +84,24 @@ export const useCart = defineStore('cart', {
     },
 
     async updateQuantity(productId: string, quantity: number) {
-      const item = this.items.find(item => item.id === productId)
-      if (!item) return
+      const product = this.items.find(product => product.id === productId)
+      if (!product || !product.quantity) return
       
       const { fetchSingleProduct } = useProducts()
       const updatedProduct = await fetchSingleProduct(productId)
-      
-      if (updatedProduct) {
-        item.maxQuantity = updatedProduct.maxQuantity
-        item.quantity = quantity
-      } else item.quantity = quantity
+      if (updatedProduct && updatedProduct.maxQuantity !== product.maxQuantity) {
+        product.maxQuantity = updatedProduct.maxQuantity
+        product.lastSynchronized = new Date().toLocaleString('hu-HU')
+      }
 
-      if (item.quantity <= 0) this.removeFromCart(productId)
+      product.quantity = quantity
       
       this.saveToLocalStorage()
+      return product
+    },
+
+    getCartItem(productId: string) {
+      return this.items.find(item => item.id === productId)
     },
 
     async processBatchUpdates() {

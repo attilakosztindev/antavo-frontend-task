@@ -15,12 +15,16 @@ const props = defineProps({
   isUnavailable: {
     type: Boolean,
     default: false
+  },
+  productId: {
+    type: String,
+    required: true
   }
 })
 
 const emit = defineEmits(['update:modelValue'])
 
-const inputValue = ref<string>('')
+const inputValue = ref<string>(props.modelValue.toString())
 
 const debounce = (fn: Function, delay: number) => {
   let timeoutId: NodeJS.Timeout
@@ -45,14 +49,15 @@ const productQty = computed({
 })
 
 const increment = () => {
-  if (productQty.value < props.quantity && productQty.value < props.maxQuantity) {
-    emit('update:modelValue', productQty.value + 1)
+  if (props.quantity <= 0 || props.modelValue >= props.quantity) {
+    return
   }
+  emit('update:modelValue', props.modelValue + 1)
 }
 
 const decrement = () => {
-  if (productQty.value > 1) {
-    emit('update:modelValue', productQty.value - 1)
+  if (props.modelValue > 1) {
+    emit('update:modelValue', props.modelValue - 1)
   }
 }
 
@@ -68,14 +73,13 @@ const handleInput = (event: Event) => {
     return
   }
   
-  const maxQuantity = Math.min(props.quantity, props.maxQuantity)
-  const validValue = Math.min(Math.max(value, 1), maxQuantity)
+  const validValue = Math.min(Math.max(value, 1), props.quantity)
   
   if (value !== validValue) {
     inputValue.value = validValue.toString()
   }
   
-  productQty.value = validValue
+  emit('update:modelValue', validValue)
 }
 
 const handleBlur = (event: Event) => {
@@ -83,16 +87,15 @@ const handleBlur = (event: Event) => {
   
   if (input.value === '' || isNaN(parseInt(input.value))) {
     inputValue.value = '1'
-    productQty.value = 1
+    emit('update:modelValue', 1)
     return
   }
   
   const value = parseInt(input.value)
-  const maxQuantity = Math.min(props.quantity, props.maxQuantity)
-  const validValue = Math.min(Math.max(value, 1), maxQuantity)
+  const validValue = Math.min(Math.max(value, 1), props.quantity)
   
   inputValue.value = validValue.toString()
-  productQty.value = validValue
+  emit('update:modelValue', validValue)
 }
 
 watch(() => props.modelValue, (newValue) => {
@@ -104,7 +107,7 @@ watch(() => props.modelValue, (newValue) => {
 .counter
   button.counter__btn.counter__btn--decrease(
     @click="decrement"
-    :disabled="isUnavailable || modelValue <= 1"
+    :disabled="isUnavailable || modelValue <= 1 || quantity <= 0"
     aria-label="Decrease quantity"
   )
     AppImg(
@@ -117,13 +120,13 @@ watch(() => props.modelValue, (newValue) => {
     :value="inputValue"
     @input="handleInput"
     @blur="handleBlur"
-    :max="Math.min(quantity, maxQuantity)"
+    :max="quantity"
     min="1"
-    :disabled="isUnavailable"
+    :disabled="isUnavailable || quantity <= 0"
   )
   button.counter__btn.counter__btn--increase(
     @click="increment"
-    :disabled="isUnavailable || modelValue >= Math.min(quantity, maxQuantity)"
+    :disabled="isUnavailable || modelValue >= quantity || quantity <= 0"
     aria-label="Increase quantity"
   )
     AppImg(
