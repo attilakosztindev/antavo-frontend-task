@@ -6,7 +6,7 @@ export function useProducts() {
 
   const productCache = new Map<string, { data: Product; timestamp: number; maxAge: number }>()
   
-  const fetchProducts = async () => {
+  const fetchProducts = async (): Promise<Product[]> => {
     loading.value = true
     error.value = null
     try {

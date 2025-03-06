@@ -2,6 +2,10 @@
 
 ![Project Screenshot](public/website.png)
 
+## (!) Deployed solution (!)
+
+A deployed version of the application is available at: https://antavo-frontend-assignment-1.netlify.app/
+
 ### Frontend
 - **Framework**: Nuxt.js 3.15.4
 - **UI Library**: Vue 3.5.13
@@ -111,6 +115,9 @@ Technical limitations:
 - Relying on accurate timestamps may cause problems
 - The cache validation is very basic
 
+Production limitations:
+- The deployed version of the app on Netlify seems to be a little slow and grainy, which could be worked on further
+
 ### Further improvements
 
 Architecture:
@@ -130,3 +137,6 @@ Performance:
 - Implementing rate limiter
 - Implementing service worker for offline caching
 - Creating a more advanced request batching
+
+Coding standards:
+- Linting and formatting could be added to the porject
