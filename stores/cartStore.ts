@@ -90,10 +90,12 @@ export const useCart = defineStore('cart', {
         const { fetchSingleProduct } = useProducts()
         const updatedProduct = await fetchSingleProduct(productId)
         
-        product.maxQuantity = updatedProduct.maxQuantity
-        product.lastSynchronized = new Date().toLocaleString('hu-HU')
-        product.quantity = quantity
+        if (product.maxQuantity !== updatedProduct.maxQuantity) {
+          product.maxQuantity = updatedProduct.maxQuantity
+          product.lastSynchronized = new Date().toLocaleString('hu-HU')
+        }
         
+        product.quantity = quantity
         this.saveToLocalStorage()
         return product
       } catch (error) {
