@@ -1,6 +1,6 @@
 import type { Product } from '~/types/inventory'
 
-const getRandomQuantity = () => Math.floor(Math.random() * 99)
+const getRandomQuantity = () => Math.floor(Math.random() * 99 + 1)
 
 export const mockInventory: Product[] = [
   {
