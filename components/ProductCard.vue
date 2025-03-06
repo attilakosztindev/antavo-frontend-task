@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import pkg from 'lodash'
 import { formatCurrency } from '~/utils/formatCurrency'
 import { useCart } from '~/stores/cartStore'
 import { useProducts } from '~/composables/useProducts'
 import type { Product } from '~/types/inventory'
 
+const { debounce } = pkg
 const cart = useCart()
 const { fetchSingleProduct } = useProducts()
 
@@ -47,10 +49,10 @@ const checkTotalQuantity = async () => {
   return updatedProduct.maxQuantity
 }
 
-const handleAddToCart = async () => {
+const handleAddToCart = debounce(async () => {
   if (!props.product.in_stock) return
   await cart.addToCart({ ...props.product }, selectedQuantity.value)
-}
+}, 150)
 
 const resetState = async () => {
   const updatedProduct = await fetchSingleProduct(props.product.id)
