@@ -16,7 +16,6 @@ A deployed version of the application is available at: https://antavo-frontend-a
 - **Template Engine**: Pug
 
 ### Utilities
-- **Date Handling**: date-fns
 - **Utils**: lodash, @vueuse/core
 - **Image Processing**: @nuxt/image
 
