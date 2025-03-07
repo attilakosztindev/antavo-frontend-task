@@ -39,7 +39,7 @@ export const mockInventory: Product[] = [
     id: '3',
     name: 'Artisanal Raw Cane Sugar Crystal Collection',
     imageUrl: 'https://images.unsplash.com/photo-1581441363689-1f3c3c414635?w=500&q=80',
-    maxQuantity: 200,
+    maxQuantity: 20,
     quantity: 0,
     lastUpdated: new Date().toISOString(),
     badges: [{ title: 'New', background_color: '#2E7D32' }],
